@@ -38,17 +38,17 @@ var (
 
 	// ErrNotFound is returned when the requested resource is not
 	// found.
-	ErrNotFound = fmt.Errorf("not found")
+	ErrNotFound = errors.New("not found")
 
 	// ErrSpaceFull is returned when the storage of the service
 	// is full.
-	ErrSpaceFull = fmt.Errorf("no space")
+	ErrSpaceFull = errors.New("no space")
 
 	// ErrUnexpected is reserved for errors that look like they
 	// would never happen. Instead of panicking use
 	// ErrUnexpected. This error can be returned by any function
 	// even if not explicitly mentioned.
-	ErrUnexpected = fmt.Errorf("unexpected")
+	ErrUnexpected = errors.New("unexpected")
 )
 
 // Unexpected returns err if it's the error of ctx, otherwise it logs err and
