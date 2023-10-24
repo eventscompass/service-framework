@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"net/http"
 
 	"google.golang.org/grpc"
@@ -12,7 +13,7 @@ type CloudService interface {
 
 	// Init initializes the service components. This method
 	// should be called once on service start up.
-	Init() error
+	Init(_ context.Context) error
 
 	// REST returns the [http.Handler] that is registered for
 	// this service as well as the config for the http server.
@@ -44,7 +45,7 @@ type BaseService struct {
 var _ CloudService = (*BaseService)(nil)
 
 // Init implements the [CloudService] interface.
-func (s *BaseService) Init() error { return nil }
+func (s *BaseService) Init(_ context.Context) error { return nil }
 
 // REST implements the [CloudService] interface.
 func (s *BaseService) REST() (http.Handler, *RESTConfig) { return s.restHandler, s.restCfg }
