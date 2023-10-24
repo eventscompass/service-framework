@@ -27,7 +27,7 @@ func Start(s CloudService) {
 	}()
 
 	// Init the service components.
-	if err := s.Init(); err != nil {
+	if err := s.Init(ctx); err != nil {
 		log.Fatalf("Failed to init service: %v", err)
 	}
 
