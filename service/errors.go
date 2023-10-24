@@ -32,6 +32,17 @@ import (
 // then the error messages don't give away where in the stack something went
 // wrong.
 var (
+	// ErrAlreadyExists is returned when the client requests to
+	// create a resource that already exists.
+	ErrAlreadyExists = errors.New("already exists")
+
+	// ErrBadRequest is returned when the client submits a
+	// request that cannot be understood and processed by the
+	// service. Usually when the request body cannot be decoded,
+	// or the request URL parameters cannot be handled, then this
+	// error is returned.
+	ErrBadRequest = errors.New("bad request")
+
 	// ErrNotAllowed is returned when the requested action is not
 	// allowed to be executed.
 	ErrNotAllowed = errors.New("not allowed")
@@ -43,6 +54,10 @@ var (
 	// ErrSpaceFull is returned when the storage of the service
 	// is full.
 	ErrSpaceFull = errors.New("no space")
+
+	// ErrTimeOut is returned when an operation performed by the
+	// service is taking longer than the allowed time limit.
+	ErrTimeOut = errors.New("time out")
 
 	// ErrUnexpected is reserved for errors that look like they
 	// would never happen. Instead of panicking use
