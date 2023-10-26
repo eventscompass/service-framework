@@ -43,6 +43,10 @@ var (
 	// error is returned.
 	ErrBadRequest = errors.New("bad request")
 
+	// ErrConnectionClosed is returned when the connection we are
+	// trying to use is closed.
+	ErrConnectionClosed = errors.New("connection closed")
+
 	// ErrNotAllowed is returned when the requested action is not
 	// allowed to be executed.
 	ErrNotAllowed = errors.New("not allowed")
