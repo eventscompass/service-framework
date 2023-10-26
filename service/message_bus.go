@@ -25,5 +25,6 @@ type MessageBus interface {
 
 	// Subscribe subscribes to the given topic. The event handler
 	// callback will be executed on every received message.
+	// This is a blocking function.
 	Subscribe(_ context.Context, topic string, h EventHandler) error
 }
