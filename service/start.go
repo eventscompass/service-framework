@@ -9,12 +9,13 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/caarlos0/env/v6"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 )
 
 // Start takes a [CloudService], initializes it and starts a server that will
-// accepts requests to the service. If the service exposes both rest and gRPC
+// accepts requests to the service. If the service exposes both rest and grpc
 // apis, then two separate servers are started to serve each api.
 // This is a blocking function that waits for the api server(s) to stop running.
 func Start(s CloudService) {
@@ -37,7 +38,12 @@ func Start(s CloudService) {
 	// returns an error, the ctx is cancelled and the shutdown is triggered.
 	g, ctx := errgroup.WithContext(ctx)
 
-	if restHandler, cfg := s.REST(); restHandler != nil { // run the http server
+	if restHandler := s.REST(); restHandler != nil { // run the http server
+		var cfg RESTConfig
+		if err := env.Parse(&cfg); err != nil {
+			log.Fatalf("Failed to parse rest environment variables: %v", err)
+		}
+
 		// The timeout values set on the server are used as TCP connection
 		// deadlines. They will close the connection for read/write operations,
 		// but will not stop the handler from processing the request. We wrap
@@ -62,10 +68,15 @@ func Start(s CloudService) {
 		})
 	}
 
-	if grpcSrv, cfg := s.GRPC(); grpcSrv != nil { // run the grpc server
+	if grpcSrv := s.GRPC(); grpcSrv != nil { // run the grpc server
+		var cfg GRPCConfig
+		if err := env.Parse(&cfg); err != nil {
+			log.Fatalf("Failed to parse grpc environment variables: %v", err)
+		}
+
 		lis, err := net.Listen("tcp", cfg.Listen)
 		if err != nil {
-			log.Fatalf("init grpc listener: %v", err)
+			log.Fatalf("Failed to init grpc listener: %v", err)
 		}
 		defer lis.Close()
 		g.Go(func() error { return grpcSrv.Serve(lis) })
