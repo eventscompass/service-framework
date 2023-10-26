@@ -7,6 +7,18 @@ import (
 )
 
 var (
+	// Exchanges.
+	EventsExchange string = "events"
+
+	// Topics.
+	EventCreatedTopic    string = "event.created"
+	EventBookedTopic     string = "event.booked"
+	LocationCreatedTopic string = "location.created"
+)
+
+var (
+	// Make sure that the defined data models implement
+	// the [service.Payload] interface.
 	_ service.Payload = (*EventCreated)(nil)
 	_ service.Payload = (*LocationCreated)(nil)
 	_ service.Payload = (*EventBooked)(nil)
@@ -23,7 +35,7 @@ type EventCreated struct {
 
 // Topic implements the [service.Payload] interface.
 func (*EventCreated) Topic() string {
-	return eventCreatedTopic
+	return EventCreatedTopic
 }
 
 // LocationCreated is the payload for notifying for the creation of a location.
@@ -34,7 +46,7 @@ type LocationCreated struct {
 
 // Topic implements the [service.Payload] interface.
 func (*LocationCreated) Topic() string {
-	return locationCreatedTopic
+	return LocationCreatedTopic
 }
 
 // EventBooked is the payload for notifying for the booking of an event.
@@ -45,12 +57,5 @@ type EventBooked struct {
 
 // Topic implements the [service.Payload] interface.
 func (*EventBooked) Topic() string {
-	return eventBookedTopic
+	return EventBookedTopic
 }
-
-var (
-	// topics
-	eventCreatedTopic    string = "event.created"
-	eventBookedTopic     string = "event.booked"
-	locationCreatedTopic string = "location.created"
-)
