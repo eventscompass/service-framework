@@ -87,6 +87,19 @@ func Start(s CloudService) {
 		})
 	}
 
+	// In case the service is subscribed to a message broker, we will listen for
+	// events inside the error group.
+	if events := s.Events(); events != nil { // listen for events
+		bus := s.Bus()
+		if bus == nil {
+			log.Fatalf("Message Bus not initialized")
+		}
+		for e, h := range events {
+			event, handler := e, h
+			g.Go(func() error { return bus.Subscribe(ctx, event, handler) })
+		}
+	}
+
 	// Wait for interrupt signals. Upon receiving one of these signals, the ctx
 	// will be cancelled, initiating a graceful shutdown of the server(s).
 	ch := make(chan os.Signal, 1)

@@ -25,3 +25,6 @@ func (s *BaseService) GRPC() *grpc.Server { return nil }
 
 // Bus implements the [CloudService] interface.
 func (s *BaseService) Bus() MessageBus { return nil }
+
+// Events implements the [CloudService] interface.
+func (s *BaseService) Events() map[string]EventHandler { return nil }

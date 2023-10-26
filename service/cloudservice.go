@@ -29,4 +29,9 @@ type CloudService interface {
 	// and subscribing to messages. Returns nil if the service is
 	// not publishing/subscribing messages.
 	Bus() MessageBus
+
+	// Events returns a map of events for which the service is
+	// listening, and their associated handlers. Returns nil if
+	// the service is not listening to events.
+	Events() map[string]EventHandler
 }
