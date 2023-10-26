@@ -8,6 +8,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
+	"github.com/eventscompass/service-framework/pubsub"
 	"github.com/eventscompass/service-framework/service"
 )
 
@@ -97,6 +98,13 @@ func (b *AMQPBus) Subscribe(ctx context.Context, topic string, h service.EventHa
 	}
 	defer ch.Close()
 
+	// Before binding the queue, make sure the exchange exists.
+	err = ch.ExchangeDeclare(b.exchange, "topic", true, false, false, false, nil)
+	if err != nil {
+		return fmt.Errorf("%w: exchange declare: %v", service.ErrUnexpected, err)
+	}
+
+	// Declare a queue with an arbitrary name and bind it to the exchange.
 	q, err := ch.QueueDeclare("", true, false, false, false, nil)
 	if err != nil {
 		return fmt.Errorf("%w: queue declare: %v", service.ErrUnexpected, err)
@@ -120,13 +128,30 @@ func (b *AMQPBus) Subscribe(ctx context.Context, topic string, h service.EventHa
 	}
 
 	for msg := range msgs {
-		var payload any
-		if err := json.Unmarshal(msg.Body, &payload); err != nil {
+		// Unpack the raw message into a concrete struct.
+		var payload service.Payload
+		switch topic {
+		case pubsub.EventCreatedTopic:
+			payload = &pubsub.EventCreated{}
+		case pubsub.EventBookedTopic:
+			payload = &pubsub.EventBooked{}
+		case pubsub.LocationCreatedTopic:
+			payload = &pubsub.LocationCreated{}
+		default:
+			return fmt.Errorf("%w: unknown topic %q", service.ErrUnexpected, topic)
+		}
+
+		if err := json.Unmarshal(msg.Body, payload); err != nil {
 			return fmt.Errorf("%w: unmarshal payload: %v", service.ErrUnexpected, err)
 		}
+
+		// Pass the message to the event handler.
 		if err := h(ctx, payload); err != nil {
 			return fmt.Errorf("%w: event handler: %v", service.ErrUnexpected, err)
 		}
+
+		// Acknowledge the message only once we have successfully
+		// finished processing
 		_ = msg.Ack(false)
 	}
 
