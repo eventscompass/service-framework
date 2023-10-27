@@ -31,7 +31,8 @@ func NewAMQPBus(cfg *service.BusConfig, exchange string) (*AMQPBus, error) {
 	connInfo := fmt.Sprintf(
 		"amqp://%s:%s@%s:%d", cfg.Username, cfg.Password, cfg.Host, cfg.Port)
 	conn, err := amqp.Dial(connInfo)
-	if err != nil { // maybe use exponential backoff for connecting ?
+	if err != nil {
+		// TODO: maybe try using exponential backoff for connecting ?
 		return nil, fmt.Errorf("%w: amqp dial: %v", service.ErrUnexpected, err)
 	}
 
@@ -73,7 +74,7 @@ func (b *AMQPBus) Publish(ctx context.Context, p service.Payload) error {
 		return fmt.Errorf("%w: exchange declare: %v", service.ErrUnexpected, err)
 	}
 
-	return ch.PublishWithContext(
+	err = ch.PublishWithContext(
 		ctx,
 		b.exchange, // exchange
 		topic,      // routing key
@@ -84,6 +85,10 @@ func (b *AMQPBus) Publish(ctx context.Context, p service.Payload) error {
 			Body:        body,
 		},
 	)
+	if err != nil {
+		return service.Unexpected(ctx, fmt.Errorf("publish message: %w", err))
+	}
+	return nil
 }
 
 // Subscribe implements the [service.MessageBus] interface.
@@ -147,10 +152,12 @@ func (b *AMQPBus) Subscribe(ctx context.Context, topic string, h service.EventHa
 
 		// Pass the message to the event handler.
 		if err := h(ctx, payload); err != nil {
-			return fmt.Errorf("%w: event handler: %v", service.ErrUnexpected, err)
+			// TODO: maybe we should not error here. If the handler errors due
+			// to a faulty message, just log and continue running the service ?
+			return service.Unexpected(ctx, fmt.Errorf("event handler: %w", err))
 		}
 
-		// Acknowledge the message only once we have successfully
+		// Acknowledge the message only after we have successfully
 		// finished processing
 		_ = msg.Ack(false)
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
 )
 
 // All exported functions, are only allowed to return the following errors or
@@ -71,16 +73,88 @@ var (
 )
 
 // Unexpected returns err if it's the error of ctx, otherwise it logs err and
-// returns err wrapped in ErrUnexpected.
+// returns err wrapped in [ErrUnexpected].
 func Unexpected(ctx context.Context, err error) error {
 	if errors.Is(err, ErrUnexpected) {
 		return err
 	}
 	if errors.Is(err, ctx.Err()) {
-		// log.Info(ctx, "The context was cancelled or timed out")
+		slog.Info("context was cancelled or timed out")
 		return err
 	}
 
-	// log.Error(ctx, "unexpected error", log.Err(err))
+	slog.Error("unexpected error occurred", slog.String("error", err.Error()))
 	return fmt.Errorf("%w: %s", ErrUnexpected, err)
+}
+
+// StatusClientClosedConnection is the http response status returned to the
+// ingress if the client closed the connection. The client won't see the
+// response, but the ingress might use it for analysis.
+const StatusClientClosedConnection = 499
+
+// HTTPError maps the provided error to the correct http status code and writes
+// that status code to the response writer `w`. It does not end the request; the
+// caller should ensure no further writes are done to w.
+func HTTPError(ctx context.Context, w http.ResponseWriter, err error) {
+	switch {
+
+	// The client closed the connection and cancelled the context.
+	case errors.Is(err, context.Canceled):
+		http.Error(w, err.Error(), StatusClientClosedConnection) // 499
+		slog.Info(
+			"request interrupted due to ctx cancellation",
+			slog.String("error", err.Error()),
+		)
+
+	// The context deadline was exceeded and the connection had a timeout.
+	case errors.Is(err, context.DeadlineExceeded):
+		http.Error(w, err.Error(), http.StatusServiceUnavailable) // 503
+		slog.Info(
+			"request interrupted due to ctx timeout",
+			slog.String("error", err.Error()),
+		)
+
+	// The client made a bad request that cannot be fulfilled.
+	case errors.Is(err, ErrBadRequest),
+		errors.Is(err, ErrSpaceFull):
+
+		http.Error(w, err.Error(), http.StatusBadRequest) // 400
+		slog.Info("client made a bad request", slog.String("error", err.Error()))
+
+	// The client requested an action that is not allowed.
+	case errors.Is(err, ErrNotAllowed):
+		http.Error(w, err.Error(), http.StatusForbidden) // 403
+		slog.Info(
+			"client requested an action that is not allowed",
+			slog.String("error", err.Error()),
+		)
+
+	// The client requested a non-existing resource or action.
+	case errors.Is(err, ErrNotFound):
+		http.Error(w, err.Error(), http.StatusNotFound) // 404
+		slog.Info(
+			"client requested a missing resource or action",
+			slog.String("error", err.Error()),
+		)
+
+	// The client requested to create a resource that already exists.
+	case errors.Is(err, ErrAlreadyExists):
+		http.Error(w, err.Error(), http.StatusConflict) // 409
+		slog.Info(
+			"client requested to create a resource that already exists",
+			slog.String("error", err.Error()),
+		)
+
+	// The service is not correctly configured or another unexpected error
+	// occurred. Errors like [ErrTimeout], [ErrUnexpected] and other unhandled
+	// errors can end up here.
+	case errors.Is(err, ErrUnexpected):
+		fallthrough
+	default:
+		http.Error(w, err.Error(), http.StatusInternalServerError) // 500
+		slog.Error(
+			"unexpected error while handling request",
+			slog.String("error", err.Error()),
+		)
+	}
 }

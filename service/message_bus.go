@@ -19,12 +19,16 @@ type Payload interface {
 // subscribing for receiving messages from a topic.
 type MessageBus interface {
 
-	// Publish publishes a message to a given topic.
-	// The payload must support `json.Unmarshal`.
+	// Publish publishes a message to a given topic. The payload
+	// must support `json.Unmarshal`. This function returns
+	// [ErrConnectionClosed] in case the connection to the
+	// message broker is closed.
 	Publish(_ context.Context, p Payload) error
 
 	// Subscribe subscribes to the given topic. The event handler
-	// callback will be executed on every received message.
+	// callback will be executed on every received message. This
+	// function returns [ErrConnectionClosed] in case the
+	// connection to the message broker is closed.
 	// This is a blocking function.
 	Subscribe(_ context.Context, topic string, h EventHandler) error
 }
