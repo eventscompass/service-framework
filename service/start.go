@@ -17,6 +17,10 @@ import (
 // Start takes a [CloudService], initializes it and starts a server that will
 // accepts requests to the service. If the service exposes both rest and grpc
 // apis, then two separate servers are started to serve each api.
+//
+// If the service is subscribed for events from a message broker, then we will
+// also start listening for these events.
+//
 // This is a blocking function that waits for the api server(s) to stop running.
 func Start(s CloudService) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -60,8 +64,9 @@ func Start(s CloudService) {
 			Addr:              cfg.Listen,
 			Handler:           h,
 		}
-		g.Go(func() error { return restSrv.ListenAndServe() })
+		// TODO: Secure.
 		// g.Go(func() error { return restSrv.ListenAndServeTLS("", "") })
+		g.Go(func() error { return restSrv.ListenAndServe() })
 		g.Go(func() error {
 			<-ctx.Done() // block until context is cancelled
 			return restSrv.Shutdown(context.Background())
@@ -96,6 +101,9 @@ func Start(s CloudService) {
 		}
 		for e, h := range events {
 			event, handler := e, h
+			// TODO: maybe don't pass the handler directly to bus.Subscribe, but
+			// instead wrap it inside a goroutine so that we are handling events
+			// concurrently. Also consider skipping the error from the handler ?
 			g.Go(func() error { return bus.Subscribe(ctx, event, handler) })
 		}
 	}
