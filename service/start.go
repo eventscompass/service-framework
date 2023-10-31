@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -15,11 +15,11 @@ import (
 )
 
 // Start takes a [CloudService], initializes it and starts a server that will
-// accepts requests to the service. If the service exposes both rest and grpc
-// apis, then two separate servers are started to serve each api.
+// accepts requests to the service.
 //
-// If the service is subscribed for events from a message broker, then we will
-// also start listening for these events.
+// If the service exposes both rest and grpc apis, then two separate servers are
+// started to serve each api. If the service is subscribed for events from a
+// message broker, then we will also start listening for these events.
 //
 // This is a blocking function that waits for the api server(s) to stop running.
 func Start(s CloudService) {
@@ -27,14 +27,17 @@ func Start(s CloudService) {
 	defer cancel()
 	defer func() {
 		if msg := recover(); msg != nil {
-			log.Fatalf("Panic: %s\n", msg)
+			slog.Error("panic", slog.Any("message", msg))
 		}
 	}()
 
 	// Init the service components.
 	if err := s.Init(ctx); err != nil {
-		log.Fatalf("Failed to init service: %v", err)
+		slog.Error("failed to init service", err)
+		return
 	}
+	// TODO: defer a call that closes all initialized resources.
+	// Stop listening for events, close the message bus, close the database client.
 
 	// We will use an error group to start the server(s).
 	// Start one goroutine that runs the server and another that waits to
@@ -45,7 +48,8 @@ func Start(s CloudService) {
 	if restHandler := s.REST(); restHandler != nil { // run the http server
 		var cfg RESTConfig
 		if err := env.Parse(&cfg); err != nil {
-			log.Fatalf("Failed to parse rest environment variables: %v", err)
+			slog.Error("failed to parse rest environment variables", err)
+			return
 		}
 
 		// The timeout values set on the server are used as TCP connection
@@ -64,11 +68,13 @@ func Start(s CloudService) {
 			Addr:              cfg.Listen,
 			Handler:           h,
 		}
+		slog.Info("starting rest server", slog.String("port", cfg.Listen))
 		// TODO: Secure.
 		// g.Go(func() error { return restSrv.ListenAndServeTLS("", "") })
 		g.Go(func() error { return restSrv.ListenAndServe() })
 		g.Go(func() error {
 			<-ctx.Done() // block until context is cancelled
+			slog.Info("shutting down rest server")
 			return restSrv.Shutdown(context.Background())
 		})
 	}
@@ -76,17 +82,21 @@ func Start(s CloudService) {
 	if grpcSrv := s.GRPC(); grpcSrv != nil { // run the grpc server
 		var cfg GRPCConfig
 		if err := env.Parse(&cfg); err != nil {
-			log.Fatalf("Failed to parse grpc environment variables: %v", err)
+			slog.Error("failed to parse grpc environment variables", err)
+			return
 		}
 
 		lis, err := net.Listen("tcp", cfg.Listen)
 		if err != nil {
-			log.Fatalf("Failed to init grpc listener: %v", err)
+			slog.Error("failed to init grpc listener", err)
+			return
 		}
 		defer lis.Close()
+		slog.Info("starting grpc server", slog.String("port", cfg.Listen))
 		g.Go(func() error { return grpcSrv.Serve(lis) })
 		g.Go(func() error {
 			<-ctx.Done() // block until context is cancelled
+			slog.Info("shutting down grpc server")
 			grpcSrv.GracefulStop()
 			return nil
 		})
@@ -97,13 +107,12 @@ func Start(s CloudService) {
 	if events := s.Events(); events != nil { // listen for events
 		bus := s.Bus()
 		if bus == nil {
-			log.Fatalf("Message Bus not initialized")
+			slog.Error("message bus not initialized")
+			return
 		}
 		for e, h := range events {
 			event, handler := e, h
-			// TODO: maybe don't pass the handler directly to bus.Subscribe, but
-			// instead wrap it inside a goroutine so that we are handling events
-			// concurrently. Also consider skipping the error from the handler ?
+			slog.Info("subscribing for events", slog.String("topic", event))
 			g.Go(func() error { return bus.Subscribe(ctx, event, handler) })
 		}
 	}
@@ -115,7 +124,7 @@ func Start(s CloudService) {
 	g.Go(func() error {
 		select {
 		case sig := <-ch:
-			log.Printf("Received stop signal: %q\n", sig)
+			slog.Info("received stop signal", slog.Any("signal", sig))
 			cancel()
 		case <-ctx.Done():
 			// Currently, the only way to cancel the context is by sending a
@@ -128,7 +137,7 @@ func Start(s CloudService) {
 
 	// Block until the service stops.
 	if err := g.Wait(); err != nil {
-		log.Fatalf("Received an error during serving: %v", err)
+		slog.Error("received an error during serving", err)
 	}
 }
 
