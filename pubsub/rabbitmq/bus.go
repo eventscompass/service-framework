@@ -9,7 +9,6 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
-	"github.com/eventscompass/service-framework/pubsub"
 	"github.com/eventscompass/service-framework/service"
 )
 
@@ -103,7 +102,11 @@ func (b *AMQPBus) Publish(ctx context.Context, p service.Payload) error {
 }
 
 // Subscribe implements the [service.MessageBus] interface.
-func (b *AMQPBus) Subscribe(ctx context.Context, topic string, h service.EventHandler) error {
+func (b *AMQPBus) Subscribe(
+	ctx context.Context,
+	topic string,
+	eventHandler service.EventHandler,
+) error {
 	if b.conn.IsClosed() {
 		return service.ErrConnectionClosed
 	}
@@ -147,30 +150,10 @@ func (b *AMQPBus) Subscribe(ctx context.Context, topic string, h service.EventHa
 	}
 
 	for msg := range msgs {
-		// Unpack the raw message into a concrete struct.
-		var payload service.Payload
-		switch topic {
-		case pubsub.EventCreatedTopic:
-			payload = &pubsub.EventCreated{}
-		case pubsub.EventBookedTopic:
-			payload = &pubsub.EventBooked{}
-		case pubsub.LocationCreatedTopic:
-			payload = &pubsub.LocationCreated{}
-		default:
-			return fmt.Errorf("%w: unknown topic %q", service.ErrUnexpected, topic)
-		}
-
-		if err := json.Unmarshal(msg.Body, payload); err != nil {
-			return fmt.Errorf("%w: unmarshal payload: %v", service.ErrUnexpected, err)
-		}
-
 		// Pass the message to the event handler.
-		if err := h(ctx, payload); err != nil {
-			return service.Unexpected(ctx, fmt.Errorf("event handler: %w", err))
-		}
+		eventHandler(ctx, msg.Body)
 
-		// Acknowledge the message only after we have successfully
-		// finished processing
+		// Ack the message only after we have successfully finished processing.
 		_ = msg.Ack(false)
 	}
 
