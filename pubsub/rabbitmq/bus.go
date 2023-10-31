@@ -2,7 +2,6 @@ package rabbitmq
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"sync"
@@ -55,17 +54,9 @@ func NewAMQPBus(cfg *service.BusConfig, exchange string) (*AMQPBus, error) {
 }
 
 // Publish implements the [service.MessageBus] interface.
-func (b *AMQPBus) Publish(ctx context.Context, p service.Payload) error {
+func (b *AMQPBus) Publish(ctx context.Context, topic string, msg []byte) error {
 	if b.conn.IsClosed() {
 		return service.ErrConnectionClosed
-	}
-
-	// TODO: Maybe marshal before publishing ?
-	// Publish(ctx context.Context, topic string, payload []byte) error
-	topic := p.Topic()
-	body, err := json.Marshal(p)
-	if err != nil {
-		return fmt.Errorf("%w: marshal payload: %v", service.ErrUnexpected, err)
 	}
 
 	// Note that AMQP channels are not thread-safe. Thus, we will be creating a
@@ -90,7 +81,7 @@ func (b *AMQPBus) Publish(ctx context.Context, p service.Payload) error {
 		false,      // immediate
 		amqp.Publishing{
 			ContentType: "application/json",
-			Body:        body,
+			Body:        msg,
 		},
 	)
 	if err != nil {
