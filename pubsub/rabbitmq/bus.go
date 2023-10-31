@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sync"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 
@@ -30,14 +31,20 @@ var (
 func NewAMQPBus(cfg *service.BusConfig, exchange string) (*AMQPBus, error) {
 	connInfo := fmt.Sprintf(
 		"amqp://%s:%s@%s:%d", cfg.Username, cfg.Password, cfg.Host, cfg.Port)
-	conn, err := amqp.Dial(connInfo)
+
+	// Use once.Do to make sure that a given micro-service creates only one
+	// rabbitmq connection even if it calls this function multiple times.
+	var err error
+	once.Do(func() { conn, err = amqp.Dial(connInfo) })
 	if err != nil {
-		// TODO: maybe try using exponential backoff for connecting ?
+		// TODO: maybe try using exponential backoff for connecting?
 		return nil, fmt.Errorf("%w: amqp dial: %v", service.ErrUnexpected, err)
 	}
 
+	// Make sure the connection is working by opening a channel on it.
 	ch, err := conn.Channel()
 	if err != nil {
+		_ = conn.Close()
 		return nil, fmt.Errorf("%w: pubsub channel: %v", service.ErrUnexpected, err)
 	}
 	defer ch.Close()
@@ -54,6 +61,8 @@ func (b *AMQPBus) Publish(ctx context.Context, p service.Payload) error {
 		return service.ErrConnectionClosed
 	}
 
+	// TODO: Maybe marshal before publishing ?
+	// Publish(ctx context.Context, topic string, payload []byte) error
 	topic := p.Topic()
 	body, err := json.Marshal(p)
 	if err != nil {
@@ -86,6 +95,8 @@ func (b *AMQPBus) Publish(ctx context.Context, p service.Payload) error {
 		},
 	)
 	if err != nil {
+		// TODO: maybe we should retry publishing.
+		// https://cloud.google.com/pubsub/docs/samples/pubsub-publish-with-error-handler
 		return service.Unexpected(ctx, fmt.Errorf("publish message: %w", err))
 	}
 	return nil
@@ -114,12 +125,15 @@ func (b *AMQPBus) Subscribe(ctx context.Context, topic string, h service.EventHa
 	if err != nil {
 		return fmt.Errorf("%w: queue declare: %v", service.ErrUnexpected, err)
 	}
+	defer ch.QueueDelete(q.Name, false, false, true)
+
 	err = ch.QueueBind(q.Name, topic, b.exchange, false, nil)
 	if err != nil {
 		return fmt.Errorf("%w: queue bind: %v", service.ErrUnexpected, err)
 	}
 
-	msgs, err := ch.Consume(
+	msgs, err := ch.ConsumeWithContext(
+		ctx,
 		q.Name, // queue
 		"",     // consumer
 		false,  // auto-ack
@@ -152,8 +166,6 @@ func (b *AMQPBus) Subscribe(ctx context.Context, topic string, h service.EventHa
 
 		// Pass the message to the event handler.
 		if err := h(ctx, payload); err != nil {
-			// TODO: maybe we should not error here. If the handler errors due
-			// to a faulty message, just log and continue running the service ?
 			return service.Unexpected(ctx, fmt.Errorf("event handler: %w", err))
 		}
 
@@ -169,3 +181,9 @@ func (b *AMQPBus) Subscribe(ctx context.Context, topic string, h service.EventHa
 func (b *AMQPBus) Close() error {
 	return b.conn.Close()
 }
+
+var (
+	// Use a singleton to make sure only one connection is open.
+	once sync.Once
+	conn *amqp.Connection
+)
