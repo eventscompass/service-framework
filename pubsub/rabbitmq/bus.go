@@ -42,10 +42,10 @@ func NewAMQPBus(cfg *service.BusConfig, exchange string) (*AMQPBus, error) {
 	// Make sure the connection is working by opening a channel on it.
 	ch, err := conn.Channel()
 	if err != nil {
-		_ = conn.Close()
+		_ = conn.Close() //nolint:errcheck // intentional
 		return nil, fmt.Errorf("%w: pubsub channel: %v", service.ErrUnexpected, err)
 	}
-	defer ch.Close()
+	defer ch.Close() //nolint:errcheck // intentional
 
 	return &AMQPBus{
 		conn:     conn,
@@ -66,7 +66,7 @@ func (b *AMQPBus) Publish(ctx context.Context, topic string, msg []byte) error {
 	if err != nil {
 		return fmt.Errorf("%w: pubsub channel: %v", service.ErrUnexpected, err)
 	}
-	defer ch.Close()
+	defer ch.Close() //nolint:errcheck // intentional
 
 	err = ch.ExchangeDeclare(b.exchange, "topic", true, false, false, false, nil)
 	if err != nil {
@@ -106,7 +106,7 @@ func (b *AMQPBus) Subscribe(
 	if err != nil {
 		return fmt.Errorf("%w: pubsub channel: %v", service.ErrUnexpected, err)
 	}
-	defer ch.Close()
+	defer ch.Close() //nolint:errcheck // intentional
 
 	// Before binding the queue, make sure the exchange exists.
 	err = ch.ExchangeDeclare(b.exchange, "topic", true, false, false, false, nil)
@@ -119,7 +119,7 @@ func (b *AMQPBus) Subscribe(
 	if err != nil {
 		return fmt.Errorf("%w: queue declare: %v", service.ErrUnexpected, err)
 	}
-	defer ch.QueueDelete(q.Name, false, false, true)
+	defer ch.QueueDelete(q.Name, false, false, true) //nolint:errcheck // intentional
 
 	err = ch.QueueBind(q.Name, topic, b.exchange, false, nil)
 	if err != nil {
@@ -145,7 +145,7 @@ func (b *AMQPBus) Subscribe(
 		eventHandler(ctx, msg.Body)
 
 		// Ack the message only after we have successfully finished processing.
-		_ = msg.Ack(false)
+		_ = msg.Ack(false) //nolint:errcheck // intentional
 	}
 
 	return nil
@@ -153,7 +153,10 @@ func (b *AMQPBus) Subscribe(
 
 // Close implements the [io.Closer] interface.
 func (b *AMQPBus) Close() error {
-	return b.conn.Close()
+	if err := b.conn.Close(); err != nil {
+		return fmt.Errorf("%w: conn close: %v", service.ErrUnexpected, err)
+	}
+	return nil
 }
 
 var (

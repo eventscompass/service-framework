@@ -1,0 +1,253 @@
+# All available linters are listed here (default enabled and disabled):
+# https://golangci-lint.run/usage/linters/
+linters:
+
+  # Disable all linters. If false then some linters will be enabled by default.
+  # Default: false.
+  disable-all: true
+
+  # We will manually enable only specific linters.
+  enable:
+    # Errcheck is a program for checking for unchecked errors in Go code.
+    # These unchecked errors can be critical bugs in some cases.
+    - errcheck
+
+    # Vet examines Go source code and reports suspicious constructs, such
+    # as Printf calls whose arguments do not align with the format string.
+    - govet
+
+    # Detects when assignments to existing variables are not used.
+    - ineffassign
+
+    # Checks Go code for unused constants, variables, functions and types.
+    - unused
+
+    # Checks whether HTTP response body is closed successfully.
+    - bodyclose
+
+    # Check whether the function uses a non-inherited context.
+    - contextcheck
+
+    # Checks function and package cyclomatic complexity.
+    - cyclop
+
+    # Checks assignments with too many blank identifiers (e.g. x, , , _, := f())
+    - dogsled
+
+    # Tool for detection of long functions.
+    - funlen
+
+    # Gci controls Go package import order and makes it always deterministic.
+    - gci
+
+    # Checks that no init functions are present in Go code.
+    - gochecknoinits
+
+    # Computes and checks the cognitive complexity of functions.
+    - gocognit
+
+    # Computes and checks the cyclomatic complexity of functions.
+    - gocyclo
+
+    # Go linter to check the errors handling expressions. Checks that errors are
+    # compared with `errors.Is()` and that errors are not created dynamically
+    # from scratch.
+    - goerr113
+
+    # Gofmt checks whether code was gofmt-ed. By default this tool runs
+    # with -s option to check for code simplification.
+    - gofmt
+
+    # Inspects source code for security problems. Available rules:
+    # https://github.com/securego/gosec#available-rules
+    - gosec
+
+    # Check import statements are formatted according to the 'goimport' command.
+    # Reformat imports in autofix mode. It should also check for unused imports.
+    - goimports
+
+    # An analyzer to detect magic numbers. List of enabled checks, see
+    # https://github.com/tommy-muehle/go-mnd/#checks for description.
+    - gomnd
+
+    # Reports long lines.
+    - lll
+
+    # Finds commonly misspelled English words in comments.
+    - misspell
+
+    # Finds naked returns in functions greater than a specified function length.
+    - nakedret
+
+    # Reports ill-formed or insufficient nolint directives.
+    - nolintlint
+
+    # Find code that shadows one of Go's predeclared identifiers.
+    - predeclared
+
+    # Fast, configurable, extensible, flexible, and beautiful linter for Go.
+    # Drop-in replacement of golint. Revive provides a lot of linting rules.
+    # See https://github.com/mgechev/revive#available-rules for details.
+    - revive
+
+    # Checks that sql.Rows and sql.Stmt are closed
+    - sqlclosecheck
+
+    # Checks that errors returned from external packages are wrapped.
+    - wrapcheck
+
+
+# Enabled linters usually have default settings with which they are run.
+# Here we will provide custom configuration for some of the enabled linters.
+linters-settings:
+
+  # Errcheck is a program for checking for unchecked errors in Go code.
+  errcheck:
+    # Report not checking errors in type assertions: `a := b.(MyStruct)`.
+    # Default: false
+    check-type-assertions: true
+    # Report assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`.
+    # Default: false
+    check-blank: true
+    # Disable the errcheck built-in exclude list.
+    # Default: false
+    disable-default-exclusions: true
+
+  # Vet examines Go source code and reports suspicious constructs.
+  govet:
+    # Report about shadowed variables.
+    # Default: false
+    check-shadowing: true
+
+  # Checks function and package cyclomatic complexity.
+  cyclop:
+    # The maximal code complexity to report.
+    # Default: 10
+    max-complexity: 10
+
+  # Checks assignments with too many blank identifiers (e.g. x, , , _, := f())
+  dogsled:
+    # Default: 2
+    max-blank-identifiers: 1
+
+  # Tool for detection of long functions.
+  funlen:
+    # Checks the number of lines in a function. If lower than 0, disable the check.
+    # Default: 60
+    lines: 80
+    # Checks the number of statements in a function. If lower than 0, disable the check.
+    # Default: 40
+    statements: 50
+    # Ignore comments when counting lines.
+    # Default false
+    ignore-comments: true
+
+  # Gci controls Go package import order and makes it always deterministic.
+  gci:
+    # Section configuration to compare against.
+    # Default: ["standard", "default"]
+    sections:
+      # Packages from the standard library reside at the top of the import block.
+      - standard
+      # Third-party packages are imported after the standard library packages.
+      - default
+      # Imports from the our own project should be grouped together at the bottom
+      # of the import block and separated by a blank line from the other imports.
+      - prefix(github.com/eventscompass/)
+    # If `custom-order` is `true`, it follows the order of `sections` option.
+    # Default: false
+    custom-order: true
+
+  # Computes and checks the cognitive complexity of functions.
+  gocognit:
+    # Minimal code complexity to report.
+    # Default: 30 (but we recommend 10-20)
+    min-complexity: 10
+
+  # Computes and checks the cyclomatic complexity of functions.
+  gocyclo:
+    # Minimal code complexity to report.
+    # Default: 30 (but we recommend 10-20)
+    min-complexity: 10
+
+  # Reports long lines.
+  lll:
+    # Max line length, lines longer will be reported.
+    # Default: 120.
+    line-length: 100
+
+  # Finds naked returns in functions greater than a specified function length.
+  nakedret:
+    # Make an issue if func has more lines of code than this setting, and it has
+    # naked returns.
+    # Default: 30
+    max-func-lines: 21
+
+  # Reports ill-formed or insufficient nolint directives.
+  nolintlint:
+    # Disable to ensure that all nolint directives actually have an effect.
+    # Default: false
+    allow-unused: false
+    # Enable to require an explanation of nonzero length after each nolint directive.
+    # Default: false
+    require-explanation: true
+    # Enable to require nolint directives to mention the specific linter being suppressed.
+    # Default: false
+    require-specific: true
+
+  # Checks that errors returned from external packages are wrapped.
+  wrapcheck:
+    # An array of strings which specify substrings of signatures to ignore.
+    # Explicitly allow only errors from the service-framework.
+    ignoreSigs:
+      - fmt.Errorf(
+      - github.com/eventscompass/service-framework/service.Unexpected(
+      # - github.com/eventscompass/service-framework/service.Err
+
+
+# In general we want to run the enabled linters with the provided configuration.
+# However, there are some very specific cases where we want to ignore warnings
+# and errors from specific linters.
+issues:
+
+  # By default some linter rules are excluded which results in ignoring some
+  # errors, which is ok inn most cases. This behaviour can be disabled with this
+  # option. To list all excluded by default patterns execute `golangci-lint run --help`.
+  # Default: true.
+  exclude-use-default: false
+
+  # We will define custom exclude rules for specific linters and specific files.
+  exclude-rules:
+
+    # Exclude lll issues for long lines that contain a //nolint or a //go:generate statement.
+    - linters:
+      - lll
+      source: (^//go:generate | //nolint:)
+
+    # Exclude lll issues for long lines that contain a URL.
+    - linters:
+      - lll
+      source: (http:// | https://)
+
+    # Exclude lll for struct tags
+    - linters:
+      - lll
+      source: "^\\W*\\w+\\W+[\\.\\w]+\\W+\\x60\\w+(:\".+?\")( \\w+(:\".+?\"))*\\x60$" # struct param with tags (\x60 is the backtick)
+
+    # Exclude some linters from running on test files.
+    - path: _test\.go
+      linters:
+        - lll
+        - funlen
+
+    # Exclude linter issues on undocumented packages.
+    - text: "should have a package comment"
+      linters:
+        - revive
+
+    # Specifically allow dot import of the internal package. It contains useful
+    # types and helper functions.
+    - text: should not use dot imports
+      source: \. "github\.com/eventscompass/[A-Za-z_-]*/src/internal" # [A-Za-z_-]* matches the service name
+      linters:
+        - revive
