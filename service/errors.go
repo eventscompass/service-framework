@@ -95,6 +95,8 @@ const StatusClientClosedConnection = 499
 // HTTPError maps the provided error to the correct http status code and writes
 // that status code to the response writer `w`. It does not end the request; the
 // caller should ensure no further writes are done to w.
+//
+//nolint:revive // ctx might be used in the future
 func HTTPError(ctx context.Context, w http.ResponseWriter, err error) {
 	switch {
 

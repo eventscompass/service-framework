@@ -6,12 +6,24 @@ import (
 
 var (
 	// Exchanges.
-	EventsExchange string = "events"
+
+	// EventsExchange is the name of the exchange used to send
+	// messages regarding events.
+	EventsExchange = "events"
 
 	// Topics.
-	EventCreatedTopic    string = "event.created"
-	EventBookedTopic     string = "event.booked"
-	LocationCreatedTopic string = "location.created"
+
+	// EventCreatedTopic is the topic is the routing key with
+	// which messages about created events will be published.
+	EventCreatedTopic = "event.created"
+
+	// EventBookedTopic is the topic is the routing key with
+	// which messages about booked events will be published.
+	EventBookedTopic = "event.booked"
+
+	// LocationCreatedTopic is the topic is the routing key with
+	// which messages about created locations will be published.
+	LocationCreatedTopic = "location.created"
 )
 
 // EventCreated is the payload for notifying for the creation of an event.

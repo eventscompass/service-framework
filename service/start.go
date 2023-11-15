@@ -22,6 +22,8 @@ import (
 // message broker, then we will also start listening for these events.
 //
 // This is a blocking function that waits for the api server(s) to stop running.
+//
+//nolint:funlen,gocognit,gocyclo,cyclop,wrapcheck // we will make up with extensive testing
 func Start(s CloudService) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -75,7 +77,7 @@ func Start(s CloudService) {
 		g.Go(func() error {
 			<-ctx.Done() // block until context is cancelled
 			slog.Info("shutting down rest server")
-			return restSrv.Shutdown(context.Background())
+			return restSrv.Shutdown(context.Background()) //nolint:contextcheck // intentional
 		})
 	}
 
@@ -91,7 +93,7 @@ func Start(s CloudService) {
 			slog.Error("failed to init grpc listener", err)
 			return
 		}
-		defer lis.Close()
+		defer lis.Close() //nolint:errcheck // intentional
 		slog.Info("starting grpc server", slog.String("port", cfg.Listen))
 		g.Go(func() error { return grpcSrv.Serve(lis) })
 		g.Go(func() error {
