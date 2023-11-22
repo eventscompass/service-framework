@@ -1,0 +1,99 @@
+version: 2.1
+
+executors:
+  go-exec:
+    docker:
+      - image: cimg/go:1.21.4
+
+# Each job specifies a number of steps which are executed in a docker container.
+jobs:
+
+  # Pull the src code from the repository and add it to the workspace.
+  # Any job that uses the src code must require this job to finish beforehand.
+  pull:
+    executor: go-exec
+    steps:
+      # A special step used to checkout the source code.
+      - checkout
+      # A special step used to persist a file/folder to be used by another job
+      # in the workflow.
+      - persist_to_workspace:
+          root: .
+          paths: .
+
+  # Run the golang linters using golangci-lint. The linters that will be run are
+  # defined inside the .golangci.yml file.
+  lint:
+    executor: go-exec
+    steps:
+      # A special step used to attach the workflow's workspace to the current
+      # executor. The full contents of the workspace are downloaded and copied
+      # into the directory the workspace is being attached at.
+      - attach_workspace:
+          at: .
+      # Install golangci-lint, see: https://golangci-lint.run/usage/install/.
+      - run:
+          environment:
+            GOLANGCI_LINT_VERSION: v1.55.2
+          command: |
+            wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s ${GOLANGCI_LINT_VERSION}
+      # Run the linters.
+      - run: golangci-lint run -v ./...
+
+  # Run the unit tests.
+  unit_tests:
+    executor: go-exec
+    steps:
+      # Attach the workspace to the current executor.
+      - attach_workspace:
+          at: .
+      # TODO: unit tests should be run with the flag -short in order to
+      # differentiate them from the integration tests.
+      # go test -short -shuffle=on -race -coverprofile /app/coverage.out /app/...
+      # The unit tests reside inside the src folder.
+      - run: go test ./...
+
+  # TODO: Add e2e tests.
+  # Run e2e tests.
+  e2e_tests:
+    executor: go-exec
+    steps:
+      - run: echo "e2e tests should be run"
+
+
+# The workflows describe the jobs and the order in which they need to be run.
+workflows:
+
+  # The dev-pipeline is run when submitting pull requests. Linter checks are run
+  # and the src code is tested with unit and integration tests.
+  dev-pipeline:
+    when:
+      not:
+        equal: [ main, << pipeline.git.branch >> ]
+
+    jobs:
+      # Pull the src code.
+      - pull
+
+      # Linting and testing should run after the code was pulled.
+      - lint:
+          requires:
+            - pull
+      - unit_tests:
+          requires:
+            - pull
+
+  # The prod-pipeline is run when PRs are merged into the main branch. To make
+  # sure all components function properly e2e tests are run.
+  prod-pipeline:
+    when:
+      equal: [ main, << pipeline.git.branch >> ]
+
+    jobs:
+      # Pull the src code.
+      - pull
+
+      # Run e2e tests.
+      - e2e_tests:
+          requires:
+            - pull
