@@ -8,7 +8,7 @@ import (
 type RESTConfig struct {
 	// Listen is the port on which the REST endpoints of this
 	// service will be registered.
-	Listen string `env:"HTTP_SERVER_LISTEN" envDefault:":10080"`
+	Listen string `env:"HTTP_SERVER_LISTEN" envDefault:":8080"`
 
 	ReadHeaderTimeout time.Duration `env:"HTTP_SERVER_READ_HEADER_TIMEOUT" envDefault:"10s"`
 	ReadTimeout       time.Duration `env:"HTTP_SERVER_READ_TIMEOUT" envDefault:"10s"`
@@ -21,10 +21,10 @@ type RESTConfig struct {
 type GRPCConfig struct {
 	// Listen is the port on which the grpc endpoints of this
 	// service will be registered.
-	Listen string `env:"GRPC_SERVER_LISTEN" envDefault:":10090"`
+	Listen string `env:"GRPC_SERVER_LISTEN" envDefault:":8081"`
 
 	// ClientTimeout is a timeout used for RPC HTTP clients. #courier
-	ClientTimeout time.Duration `enc:"RPC_CLIENT_TIMEOUT"`
+	ClientTimeout time.Duration `env:"GRPC_CLIENT_TIMEOUT"`
 }
 
 // BusConfig encapsulates the configuration for the message bus used by the service.
