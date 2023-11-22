@@ -27,6 +27,7 @@ type GRPCConfig struct {
 	ClientTimeout time.Duration `env:"GRPC_CLIENT_TIMEOUT"`
 }
 
+// Test
 // BusConfig encapsulates the configuration for the message bus used by the service.
 type BusConfig struct {
 	Host     string `env:"MESSAGE_BUS_HOST" envDefault:"rabbitmq"`
