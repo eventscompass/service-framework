@@ -26,11 +26,3 @@ type GRPCConfig struct {
 	// ClientTimeout is a timeout used for RPC HTTP clients. #courier
 	ClientTimeout time.Duration `env:"GRPC_CLIENT_TIMEOUT"`
 }
-
-// BusConfig encapsulates the configuration for the message bus used by the service.
-type BusConfig struct {
-	Host     string `env:"MESSAGE_BUS_HOST" envDefault:"rabbitmq"`
-	Port     int    `env:"MESSAGE_BUS_PORT" envDefault:":5672"`
-	Username string `env:"MESSAGE_BUS_USERNAME" envDefault:"user"`
-	Password string `env:"MESSAGE_BUS_PASSWORD" envDefault:"password"`
-}

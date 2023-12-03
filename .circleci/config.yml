@@ -21,14 +21,29 @@ jobs:
           root: .
           paths: .
 
-  # Run the golang linters using golangci-lint. The linters that will be run are
-  # defined inside the .golangci.yml file.
-  lint:
+  # Make sure that `gofmt` was run.
+  gofmt:
     executor: go-exec
     steps:
       # A special step used to attach the workflow's workspace to the current
       # executor. The full contents of the workspace are downloaded and copied
       # into the directory the workspace is being attached at.
+      - attach_workspace:
+          at: .
+      # Copy the contents of the project into a separate folder, run gofmt, and
+      # check the diff. Note that we are creating a copy of the original
+      # project, because we don't know which is the project folder. If the
+      # project lives inside /tmp then diff will never return true.
+      - run: cp -r ./ /tmp/service_orig
+      - run: cp -r /tmp/service_orig /tmp/service_fmt
+      - run: cd /tmp/service_fmt && go fmt ./...        # gofmt must be run from within the folder
+      - run: diff -r /tmp/service_orig /tmp/service_fmt # exits with error if there is a diff
+
+  # Run the linters.
+  lint:
+    executor: go-exec
+    steps:
+      # Attach the workspace to the current executor.
       - attach_workspace:
           at: .
       # Install golangci-lint, see: https://golangci-lint.run/usage/install/.
@@ -37,7 +52,8 @@ jobs:
             GOLANGCI_LINT_VERSION: v1.55.2
           command: |
             wget -O- -nv https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s ${GOLANGCI_LINT_VERSION}
-      # Run the linters.
+      # Run the golang linters using golangci-lint. The linters that will be run
+      # are defined inside the .golangci.yml file.
       - run: golangci-lint run -v ./...
 
   # Run the unit tests.
@@ -75,7 +91,10 @@ workflows:
       # Pull the src code.
       - pull
 
-      # Linting and testing should run after the code was pulled.
+      # Fmt, lint and tests should run after the code was pulled.
+      - gofmt:
+          requires:
+            - pull
       - lint:
           requires:
             - pull
