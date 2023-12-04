@@ -21,7 +21,7 @@ jobs:
           root: .
           paths: .
 
-  # Make sure that `gofmt` was run.
+  # Make sure that `go fmt` `go mod tidy` and `go mod vendor` were run.
   gofmt:
     executor: go-exec
     steps:
@@ -30,14 +30,17 @@ jobs:
       # into the directory the workspace is being attached at.
       - attach_workspace:
           at: .
-      # Copy the contents of the project into a separate folder, run gofmt, and
-      # check the diff. Note that we are creating a copy of the original
-      # project, because we don't know which is the project folder. If the
-      # project lives inside /tmp then diff will never return true.
-      - run: cp -r ./ /tmp/service_orig
-      - run: cp -r /tmp/service_orig /tmp/service_fmt
-      - run: cd /tmp/service_fmt && go fmt ./...        # gofmt must be run from within the folder
-      - run: diff -r /tmp/service_orig /tmp/service_fmt # exits with error if there is a diff
+      # Run `go fmt`, `go mod tidy`, and `go mod vendor`. Note that they need to
+      # be run from within the project folder. Then check the diff and fail the
+      # step if there is any. Note that `git diff` only prints the diff and does
+      # not error. Running `git diff --quiet` will error in case of diff.
+      - run: go fmt ./...
+      - run: go mod tidy
+      - run: go mod vendor
+      - run:
+          command: |
+            git --no-pager diff
+            git --no-pager diff --quiet
 
   # Run the linters.
   lint:
